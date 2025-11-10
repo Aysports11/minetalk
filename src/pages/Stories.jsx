@@ -11,19 +11,28 @@ export default function Stories() {
   const [preview, setPreview] = useState(null);
   const [caption, setCaption] = useState('');
 
-  // Load stories
   useEffect(() => {
     const load = async () => {
-      const records = await pb.collection('stories').getFullList({ sort: '-created' });
-      setStories(records);
+      try {
+        const records = await pb.collection('stories').getFullList({
+          sort: '-created',
+          expand: 'user'
+        });
+        setStories(records);
+      } catch (err) {
+        console.error('Load stories error:', err);
+      }
     };
     load();
 
-    pb.collection('stories').subscribe('*', (e) => {
-      if (e.action === 'create') setStories(prev => [e.record, ...prev]);
+    const unsub = pb.collection('stories').subscribe('*', async (e) => {
+      if (e.action === 'create') {
+        const expanded = await pb.collection('stories').getOne(e.record.id, { expand: 'user' });
+        setStories(prev => [expanded, ...prev]);
+      }
     });
 
-    return () => pb.collection('stories').unsubscribe();
+    return () => unsub();
   }, []);
 
   const handlePhoto = (e) => {
@@ -42,28 +51,54 @@ export default function Stories() {
     formData.append('image', photoFile);
     formData.append('caption', caption);
 
-    await pb.collection('stories').create(formData);
-    setPhotoFile(null);
-    setPreview(null);
-    setCaption('');
+    try {
+      await pb.collection('stories').create(formData);
+      setPhotoFile(null);
+      setPreview(null);
+      setCaption('');
+      alert('Story uploaded!');
+    } catch (err) {
+      console.error('Upload error:', err);
+      alert('Upload failed: ' + err.message + '. Check permissions.');
+    }
   };
 
   return (
     <div style={{ padding: '20px', paddingBottom: '100px' }}>
       <Link to="/" style={{ display: 'inline-block', marginBottom: '20px', color: '#06b6d4' }}>
-        ← Back to Home
+        Back to Home
       </Link>
 
       <h1 style={{ color: '#0d9488', fontSize: '28px', marginBottom: '16px' }}>Stories</h1>
 
       {/* Upload */}
       <div style={{ background: 'white', padding: '16px', borderRadius: '12px', marginBottom: '20px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
-        <input type="file" accept="image/*" capture="environment" onChange={handlePhoto} style={{ marginBottom: '12px' }} />
+        <label style={{ cursor: 'pointer', display: 'block', marginBottom: '12px' }}>
+          <input
+            type="file"
+            accept="image/*"
+            capture="environment"
+            onChange={handlePhoto}
+            style={{ display: 'none' }}
+          />
+          <div style={{
+            padding: '12px',
+            background: 'linear-gradient(to right, #06b6d4, #0d9488)',
+            color: 'white',
+            borderRadius: '50px',
+            textAlign: 'center',
+            fontWeight: 'bold'
+          }}>
+            📷 Take Photo
+          </div>
+        </label>
+
         {preview && (
           <div style={{ textAlign: 'center', marginBottom: '12px' }}>
             <img src={preview} alt="Preview" style={{ width: '100%', maxWidth: '300px', borderRadius: '12px' }} />
           </div>
         )}
+
         <input
           type="text"
           placeholder="Add caption..."
@@ -71,12 +106,13 @@ export default function Stories() {
           onChange={(e) => setCaption(e.target.value)}
           style={{ width: '100%', padding: '12px', marginBottom: '12px', border: '1px solid #ddd', borderRadius: '8px' }}
         />
+
         <button
           onClick={uploadStory}
           style={{
             width: '100%',
             padding: '12px',
-            background: 'linear-gradient(to right, #06b6d4, #0d9488)',
+            background: '#10b981',
             color: 'white',
             border: 'none',
             borderRadius: '8px',
@@ -87,10 +123,10 @@ export default function Stories() {
         </button>
       </div>
 
-      {/* Stories Feed */}
+      {/* Feed */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
         {stories.map(s => {
-          const imageUrl = `${pb.baseUrl}/api/files/stories/${s.id}/${s.image}`;
+          const imageUrl = s.image ? `${pb.baseUrl}/api/files/stories/${s.id}/${s.image}` : null;
           return (
             <div
               key={s.id}
@@ -106,14 +142,20 @@ export default function Stories() {
                 cursor: 'pointer'
               }}
             >
-              <img
-                src={imageUrl}
-                alt="Story"
-                style={{ width: '50px', height: '50px', borderRadius: '50%', objectFit: 'cover' }}
-              />
+              {imageUrl && (
+                <img
+                  src={imageUrl}
+                  alt="Story"
+                  style={{ width: '50px', height: '50px', borderRadius: '50%', objectFit: 'cover' }}
+                />
+              )}
               <div>
-                <p style={{ fontWeight: 'bold', margin: 0 }}>{s.expand?.user?.username || 'You'}</p>
-                <p style={{ color: '#888', fontSize: '14px', margin: 0 }}>{new Date(s.created).toLocaleTimeString()}</p>
+                <p style={{ fontWeight: 'bold', margin: 0 }}>
+                  {s.expand?.user?.username || 'You'}
+                </p>
+                <p style={{ color: '#888', fontSize: '14px', margin: 0 }}>
+                  {new Date(s.created).toLocaleTimeString()}
+                </p>
               </div>
             </div>
           );
@@ -128,11 +170,13 @@ export default function Stories() {
           zIndex: 1000, padding: '20px'
         }}>
           <div style={{ textAlign: 'center', color: 'white', maxWidth: '90%' }}>
-            <img
-              src={`${pb.baseUrl}/api/files/stories/${selectedStory.id}/${selectedStory.image}`}
-              alt="Story"
-              style={{ width: '100%', maxWidth: '400px', borderRadius: '16px', marginBottom: '16px' }}
-            />
+            {selectedStory.image && (
+              <img
+                src={`${pb.baseUrl}/api/files/stories/${selectedStory.id}/${selectedStory.image}`}
+                alt="Story"
+                style={{ width: '100%', maxWidth: '400px', borderRadius: '16px', marginBottom: '16px' }}
+              />
+            )}
             <p style={{ fontSize: '18px' }}>{selectedStory.caption}</p>
             <button
               onClick={() => setSelectedStory(null)}
