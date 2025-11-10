@@ -8,10 +8,19 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsub = pb.authStore.onChange(() => {
+    // Check if user is already logged in
+    if (pb.authStore.isValid) {
       setUser(pb.authStore.model);
-      setLoading(false);
+    }
+
+    // Listen for auth changes
+    const unsub = pb.authStore.onChange(() => {
+      setUser(pb.authStore.isValid ? pb.authStore.model : null);
     });
+
+    // Stop loading after first check
+    setLoading(false);
+
     return () => unsub();
   }, []);
 

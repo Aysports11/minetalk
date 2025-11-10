@@ -8,12 +8,14 @@ import Stories from './pages/Stories';
 import Profile from './pages/Profile';
 import Navbar from './components/Navbar';
 
+// Protected Route
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
   if (loading) return <div style={{ padding: '40px', textAlign: 'center' }}>Loading...</div>;
   return user ? children : <Navigate to="/login" replace />;
 }
 
+// Public Route
 function PublicRoute({ children }) {
   const { user, loading } = useAuth();
   if (loading) return <div style={{ padding: '40px', textAlign: 'center' }}>Loading...</div>;
@@ -22,8 +24,8 @@ function PublicRoute({ children }) {
 
 function App() {
   return (
-    <AuthProvider>
-      <BrowserRouter>
+    <BrowserRouter>
+      <AuthProvider>
         <div style={{ paddingBottom: '80px', minHeight: '100vh' }}>
           <Routes>
             <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
@@ -44,8 +46,8 @@ function App() {
             />
           </Routes>
         </div>
-      </BrowserRouter>
-    </AuthProvider>
+      </AuthProvider>
+    </BrowserRouter>
   );
 }
 
