@@ -1,6 +1,6 @@
 {
   "appId": "com.aysports11.minetalk",
-  "appName": "MineTalk",
+  "appName": "minetalk",
   "webDir": "build",
   "bundledWebRuntime": false
 }
